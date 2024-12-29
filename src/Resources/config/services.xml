@@ -1,0 +1,34 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <services>
+        <service id="Revinners\AddToBasketPlugin\Storefront\Controller\AddToBasketController" public="true">
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+            <call method="setTwig">
+                <argument type="service" id="twig"/>
+            </call>
+            <argument type="service" id="Revinners\AddToBasketPlugin\Service\AddToBasketRequestValidator"/>
+            <argument type="service" id="Revinners\AddToBasketPlugin\Service\ProductFinder"/>
+            <argument type="service" id="Revinners\AddToBasketPlugin\Service\CartManager"/>
+        </service>
+
+        <service id="Revinners\AddToBasketPlugin\Service\AddToBasketRequestValidator" public="false">
+            <argument type="service" id="validator"/>
+        </service>
+
+        <service id="Revinners\AddToBasketPlugin\Service\ProductFinder" public="false">
+            <argument type="service" id="product.repository"/>
+        </service>
+
+        <service id="Revinners\AddToBasketPlugin\Service\CartManager" public="false">
+            <argument type="service" id="Shopware\Core\Checkout\Cart\LineItemFactoryRegistry"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
+        </service>
+
+    </services>
+</container>

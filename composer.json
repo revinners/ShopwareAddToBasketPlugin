@@ -1,0 +1,47 @@
+{
+    "name": "revinners/shopware6-add-to-basket-plugin",
+    "description": "Add to basket plugin for Shopware 6",
+    "type": "shopware-platform-plugin",
+    "version": "1.0.0",
+    "authors": [
+        {
+            "name": "Revinners",
+            "role": "Manufacturer"
+        }
+    ],
+    "license": "MIT",
+    "require": {
+        "shopware/core": "~6.6.0",
+        "php": ">=8.2"
+    },
+    "extra": {
+        "shopware-plugin-class": "Revinners\\AddToBasketPlugin\\RevinnersAddToBasket",
+        "label": {
+            "de-DE": "Add to basket plugin",
+            "en-GB": "Add to basket plugin",
+            "pl-PL": "Add to basket plugin"
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Revinners\\AddToBasketPlugin\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Revinners\\AddToBasketPlugin\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "symplify/easy-coding-standard": "^12.5",
+        "phpstan/phpstan": "^2.0",
+        "phpunit/phpunit": "^11.5",
+        "slevomat/coding-standard": "^8.15"
+    },
+    "config": {
+        "allow-plugins": {
+            "symfony/runtime": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    }
+}
