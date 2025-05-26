@@ -27,7 +27,7 @@ class AddToBasketController extends StorefrontController
     ) {
     }
 
-    #[Route('/add-to-basket', name: 'frontend.add_to_basket', methods: ['GET'])]
+    #[Route('/add-to-basket', name: 'frontend.add_to_basket', defaults: ['XmlHttpRequest' => 'true'], methods: ['GET'])]
     public function addToBasket(Request $request, Cart $cart, Context $context, SalesChannelContext $channelContext): Response
     {
         $dto = new AddToBasketRequest(
