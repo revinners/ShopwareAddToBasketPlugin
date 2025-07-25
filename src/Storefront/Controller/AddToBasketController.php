@@ -33,6 +33,7 @@ class AddToBasketController extends StorefrontController
         $dto = new AddToBasketRequest(
             $request->query->get('sku'),
             (int) $request->query->get('qty'),
+            (float) $request->query->get('amount', 0.0)
         );
 
         $errors = $this->validator->validate($dto);
@@ -52,7 +53,7 @@ class AddToBasketController extends StorefrontController
             ], Response::HTTP_NOT_FOUND);
         }
 
-        $this->cartManager->addToCart($cart, $product, $dto->getQuantity(), $channelContext);
+        $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
 
         return new JsonResponse([
             'success' => true,

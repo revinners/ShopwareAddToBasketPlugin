@@ -15,10 +15,14 @@ final class AddToBasketRequest
     #[Assert\Positive(message: 'Quantity must be a positive integer')]
     private int $quantity;
 
-    public function __construct(string $sku, int $quantity)
+    #[Assert\Assert\PositiveOrZero(message: 'Quantity must be a positive integer')]
+    private float $amount;
+
+    public function __construct(string $sku, int $quantity, float $amount = 0.0)
     {
         $this->sku = $sku;
         $this->quantity = $quantity;
+        $this->amount = $amount;
     }
 
     public function getSku(): string
@@ -29,5 +33,10 @@ final class AddToBasketRequest
     public function getQuantity(): int
     {
         return $this->quantity;
+    }
+
+    public function getAmount(): float
+    {
+        return $this->amount;
     }
 }
