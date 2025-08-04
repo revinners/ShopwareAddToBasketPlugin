@@ -18,11 +18,15 @@ final class AddToBasketRequest
     #[Assert\Assert\PositiveOrZero(message: 'Quantity must be a positive integer')]
     private float $amount;
 
-    public function __construct(string $sku, int $quantity, float $amount = 0.0)
+    #[Assert\Length(max: 255, maxMessage: 'Message cannot exceed 255 characters')]
+    private ?string $message;
+
+    public function __construct(string $sku, int $quantity, float $amount = 0.0, ?string $message = null)
     {
         $this->sku = $sku;
         $this->quantity = $quantity;
         $this->amount = $amount;
+        $this->message = $message;
     }
 
     public function getSku(): string
@@ -38,5 +42,10 @@ final class AddToBasketRequest
     public function getAmount(): float
     {
         return $this->amount;
+    }
+
+    public function getMessage(): ?string
+    {
+        return $this->message;
     }
 }

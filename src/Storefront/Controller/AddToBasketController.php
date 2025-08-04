@@ -33,7 +33,8 @@ class AddToBasketController extends StorefrontController
         $dto = new AddToBasketRequest(
             $request->query->get('sku'),
             (int) $request->query->get('qty'),
-            (float) $request->query->get('amount', 0.0)
+            (float) $request->query->get('amount', 0.0),
+            $request->get('message')
         );
 
         $errors = $this->validator->validate($dto);

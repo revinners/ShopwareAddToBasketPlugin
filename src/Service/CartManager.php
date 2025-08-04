@@ -24,17 +24,14 @@ class CartManager
     public function addToCart(Cart $cart, ProductEntity $product, AddToBasketRequest $dto, SalesChannelContext $channelContext): void
     {
         $quantity = $dto->getQuantity();
-        $existingLineItem = null;
         $amount = $dto->getAmount();
+        $message = $dto->getMessage();
+        $existingLineItem = null;
         foreach ($cart->getLineItems() as $lineItem) {
             if ($lineItem->getReferencedId() === $product->getId() &&
-                $lineItem->getType() === LineItem::PRODUCT_LINE_ITEM_TYPE) {
-                $lineItemAmount = $lineItem->getPayloadValue('netiNextEasyCoupon');
-                if (!isset($lineItemAmount) || $lineItemAmount['voucherValue'] !== $amount) {
-                    continue;
-                }
+                $lineItem->getType() === LineItem::PRODUCT_LINE_ITEM_TYPE &&
+                !$lineItem->hasPayloadValue('netiNextEasyCoupon')) {
                 $existingLineItem = $lineItem;
-
                 break;
             }
         }
@@ -49,7 +46,10 @@ class CartManager
                 'quantity' => $quantity,
             ], $channelContext);
 
-            $lineItem->setPayloadValue('netiNextEasyCoupon', ['voucherValue' => $amount]);
+
+            if (!empty($amount) && !empty($message)) {
+                $lineItem->setPayloadValue('netiNextEasyCoupon', ['voucherValue' => $amount, 'voucherMessage' => $message]);
+            }
 
             $this->cartService->add($cart, $lineItem, $channelContext);
         }
