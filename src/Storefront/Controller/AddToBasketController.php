@@ -31,9 +31,10 @@ class AddToBasketController extends StorefrontController
     #[Route('/add-to-basket', name: 'frontend.add_to_basket', defaults: ['XmlHttpRequest' => 'true'], methods: ['GET'])]
     public function addToBasket(Request $request, Cart $cart, Context $context, SalesChannelContext $channelContext): Response
     {
+        $qty = (int)$request->query->get('qty');
         $dto = new AddToBasketRequest(
             $request->query->get('sku'),
-            (int)$request->query->get('qty'),
+            $qty,
             (float)$request->query->get('amount', 0.0),
             $request->get('message')
         );
@@ -57,7 +58,26 @@ class AddToBasketController extends StorefrontController
 
         $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
 
+        $lineItem = $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $product->getId() && $item->getType() === 'product');
+
+        if (!$lineItem) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Could not retrieve line item from cart',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        $price = $lineItem->getPrice();
+        $tax = $price->getCalculatedTaxes()->first();
+        $taxRate = 1;
+        if (isset($tax)) {
+            $taxRate = 1 + $tax->getTaxRate() / 100;
+        }
+        $finalPrice = number_format($price->getUnitPrice() * $taxRate * $qty, 2, '.', '');
+
         return new JsonResponse([
+            'price' => $finalPrice,
+            'qty' => $qty,
             'success' => true,
             'message' => 'Product added to the basket',
         ]);
@@ -76,9 +96,10 @@ class AddToBasketController extends StorefrontController
 
         $results = [];
         foreach ($items as $item) {
+            $qty = (int)($item['qty']);
             $dto = new AddToBasketRequest(
                 $item['sku'],
-                (int)($item['qty']),
+                $qty,
                 (float)($item['amount'] ?? 0.0),
                 $item['message'] ?? null
             );
@@ -102,8 +123,27 @@ class AddToBasketController extends StorefrontController
 
             $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
 
+            $lineItem = $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $product->getId() && $item->getType() === 'product');
+
+            if (!$lineItem) {
+                return new JsonResponse([
+                    'success' => false,
+                    'message' => 'Could not retrieve line item from cart',
+                ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            $price = $lineItem->getPrice();
+            $tax = $price->getCalculatedTaxes()->first();
+            $taxRate = 1;
+            if (isset($tax)) {
+                $taxRate = 1 + $tax->getTaxRate() / 100;
+            }
+            $finalPrice = number_format($price->getUnitPrice() * $taxRate * $qty, 2, '.', '');
+
             $results[] = [
                 'sku' => $dto->getSku(),
+                'price' => $finalPrice,
+                'qty' => $qty,
                 'success' => true,
                 'message' => 'Product added to the basket',
             ];
