@@ -2,7 +2,7 @@
     "name": "revinners/shopware6-add-to-basket-plugin",
     "description": "Add to basket plugin for Shopware 6",
     "type": "shopware-platform-plugin",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "authors": [
         {
             "name": "Revinners",

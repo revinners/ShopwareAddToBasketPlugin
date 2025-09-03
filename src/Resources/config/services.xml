@@ -28,6 +28,9 @@
         <service id="Revinners\AddToBasketPlugin\Service\CartManager" public="false">
             <argument type="service" id="Shopware\Core\Checkout\Cart\LineItemFactoryRegistry"/>
             <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
+            <argument type="service" id="event_dispatcher"/>
+            <argument type="service" id="session.factory"/>
+            <argument type="service" id="Shopware\Core\Framework\Plugin\KernelPluginLoader\KernelPluginLoader"/>
         </service>
 
     </services>
