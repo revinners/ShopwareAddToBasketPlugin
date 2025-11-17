@@ -61,8 +61,7 @@ class CartManager
                 'quantity' => $quantity,
             ], $channelContext);
 
-
-            if (!empty($amount) && !empty($message)) {
+            if (!empty($amount)) {
                 $lineItem->setPayloadValue('netiNextEasyCoupon', ['voucherValue' => $amount, 'voucherMessage' => $message]);
             }
 
