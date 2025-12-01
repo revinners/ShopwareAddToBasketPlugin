@@ -39,14 +39,6 @@ class CartManager
         $amount = $dto->getAmount();
         $message = $dto->getMessage();
         $existingLineItem = null;
-        foreach ($cart->getLineItems() as $lineItem) {
-            if ($lineItem->getReferencedId() === $product->getId() &&
-                $lineItem->getType() === LineItem::PRODUCT_LINE_ITEM_TYPE &&
-                !$lineItem->hasPayloadValue('netiNextEasyCoupon')) {
-                $existingLineItem = $lineItem;
-                break;
-            }
-        }
 
         $items = [];
 
@@ -63,6 +55,11 @@ class CartManager
 
             if (!empty($amount)) {
                 $lineItem->setPayloadValue('netiNextEasyCoupon', ['voucherValue' => $amount, 'voucherMessage' => $message]);
+            }
+
+            $originalSku = $dto->getOriginalSku();
+            if (!empty($originalSku)) {
+                $lineItem->setPayloadValue('originalSku', $originalSku);
             }
 
             $this->cartService->add($cart, $lineItem, $channelContext);
