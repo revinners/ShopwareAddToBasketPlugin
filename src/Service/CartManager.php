@@ -75,9 +75,6 @@ class CartManager
                 ];
             }, $items));
         }
-
-        $this->eventDispatcher->dispatch(new AfterLineItemAddedEvent($items, $cart, $channelContext));
-        $this->eventDispatcher->dispatch(new CartChangedEvent($cart, $channelContext));
     }
 
     private function isPluginActive(string $pluginName): bool
