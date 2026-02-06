@@ -39,6 +39,14 @@ class CartManager
         $amount = $dto->getAmount();
         $message = $dto->getMessage();
         $existingLineItem = null;
+        foreach ($cart->getLineItems() as $lineItem) {
+            if ($lineItem->getReferencedId() === $product->getId() &&
+                $lineItem->getType() === LineItem::PRODUCT_LINE_ITEM_TYPE &&
+                !$lineItem->hasPayloadValue('netiNextEasyCoupon')) {
+                $existingLineItem = $lineItem;
+                break;
+            }
+        }
 
         $items = [];
 
