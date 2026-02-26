@@ -83,6 +83,10 @@ class CartManager
                 ];
             }, $items));
         }
+
+        //Wymagane do poprawnego działania event subscriberów, które nasłuchują na dodanie produktu do koszyka
+        $this->eventDispatcher->dispatch(new AfterLineItemAddedEvent($items, $cart, $channelContext));
+        $this->eventDispatcher->dispatch(new CartChangedEvent($cart, $channelContext));
     }
 
     private function isPluginActive(string $pluginName): bool
