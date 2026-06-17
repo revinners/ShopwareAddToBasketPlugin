@@ -17,6 +17,15 @@
             <argument type="service" id="Revinners\AddToBasketPlugin\Service\CartManager"/>
         </service>
 
+        <service id="Revinners\AddToBasketPlugin\Storefront\Controller\CartInfoController" public="true">
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+            <call method="setTwig">
+                <argument type="service" id="twig"/>
+            </call>
+        </service>
+
         <service id="Revinners\AddToBasketPlugin\Service\AddToBasketRequestValidator" public="false">
             <argument type="service" id="validator"/>
         </service>
