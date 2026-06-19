@@ -16,6 +16,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route(defaults: ['_routeScope' => ['storefront']])]
 class CartInfoController extends StorefrontController
 {
+    private const BATTERY_DEPOSIT_LINE_ITEM_TYPE = 'battery_deposit';
+
     #[Route('/cart-info', name: 'frontend.cart_info', defaults: ['XmlHttpRequest' => 'true'], methods: ['GET'])]
     public function cartInfo(Cart $cart, SalesChannelContext $channelContext): Response
     {
@@ -26,15 +28,16 @@ class CartInfoController extends StorefrontController
         $grossPrice = 0.0;
         $netPrice = 0.0;
 
-        // Calculate only the cart items themselves: product line items.
-        // Excludes shipping and the battery deposit
-        // The totals reflect the value of the products only
         foreach ($lineItems as $lineItem) {
-            if ($lineItem->getType() !== LineItem::PRODUCT_LINE_ITEM_TYPE) {
+            $type = $lineItem->getType();
+
+            if ($type === self::BATTERY_DEPOSIT_LINE_ITEM_TYPE) {
                 continue;
             }
 
-            $quantity += $lineItem->getQuantity();
+            if ($type !== LineItem::PROMOTION_LINE_ITEM_TYPE) {
+                $quantity += $lineItem->getQuantity();
+            }
 
             $price = $lineItem->getPrice();
             if ($price === null) {

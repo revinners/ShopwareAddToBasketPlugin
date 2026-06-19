@@ -88,16 +88,16 @@ const data = await res.json();
 
 #### Response fields
 
-| Field           | Type   | Description                                                                                                 |
-| --------------- | ------ | ----------------------------------------------------------------------------------------------------------- |
-| `success`       | bool   | Always `true` for a successful response.                                                                    |
-| `count`         | int    | Total quantity of all product line items (sum of quantities) — the usual basket-badge number.               |
-| `lineItemCount` | int    | Number of distinct line items in the cart.                                                                  |
-| `totalPrice`    | string | **Gross** total of the product line items, formatted with 2 decimals and a `.` separator (e.g. `"123.45"`). |
-| `netPrice`      | string | **Net** total of the product line items, same formatting as `totalPrice`.                                   |
-| `currencyId`    | string | ID of the sales-channel currency the totals are expressed in.                                               |
+| Field           | Type   | Description                                                                                                  |
+| --------------- | ------ | ------------------------------------------------------------------------------------------------------------ |
+| `success`       | bool   | Always `true` for a successful response.                                                                     |
+| `count`         | int    | Total quantity of the eligible line items (sum of quantities) — the usual basket-badge number.               |
+| `lineItemCount` | int    | Number of distinct line items in the cart (all types).                                                       |
+| `totalPrice`    | string | **Gross** total of the eligible line items, formatted with 2 decimals and a `.` separator (e.g. `"123.45"`). |
+| `netPrice`      | string | **Net** total of the eligible line items, same formatting as `totalPrice`.                                   |
+| `currencyId`    | string | ID of the sales-channel currency the totals are expressed in.                                                |
 
-> **Note:** `count`, `totalPrice` and `netPrice` only consider `product` line items. Shipping/delivery costs and other line-item types (e.g. the battery deposit, promotions, discounts) are **excluded** — the totals reflect the value of the products only. For an empty cart all numeric values are `0` / `"0.00"`.
+> **Note:** the totals sum **all** line items regardless of type (a cart may hold several product-like types), **except** the battery deposit (`battery_deposit`), which is left out entirely. Promotions (`promotion`) are **kept in `totalPrice`/`netPrice`** (they lower the value) but are **not counted in `count`**. Shipping/delivery costs are excluded implicitly because they are not line items. For an empty cart all numeric values are `0` / `"0.00"`.
 
 ## Testing
 
