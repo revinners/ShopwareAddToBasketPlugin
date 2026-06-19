@@ -97,7 +97,7 @@ const data = await res.json();
 | `netPrice`      | string | **Net** total of the eligible line items, same formatting as `totalPrice`.                                   |
 | `currencyId`    | string | ID of the sales-channel currency the totals are expressed in.                                                |
 
-> **Note:** the totals sum **all** line items regardless of type (a cart may hold several product-like types), **except** the battery deposit (`battery_deposit`), which is left out entirely. Promotions (`promotion`) are **kept in `totalPrice`/`netPrice`** (they lower the value) but are **not counted in `count`**. Shipping/delivery costs are excluded implicitly because they are not line items. For an empty cart all numeric values are `0` / `"0.00"`.
+> **Note:** the totals sum **all** line items regardless of type (a cart may hold several product-like types), **except** the battery deposit (`battery_deposit`) and promotions (`promotion`), which are left out of `count`, `totalPrice` and `netPrice`. The thresholds are meant to be compared against the value of the items themselves, so an applied discount must not lower it. Shipping/delivery costs are excluded implicitly because they are not line items. For an empty cart all numeric values are `0` / `"0.00"`.
 
 ## Testing
 

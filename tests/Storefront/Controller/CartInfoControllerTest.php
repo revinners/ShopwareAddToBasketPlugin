@@ -72,9 +72,8 @@ class CartInfoControllerTest extends TestCase
         // Both must count - the cart can hold several product-ish line item types.
         $cart->add($this->createLineItem('product-a', LineItem::PRODUCT_LINE_ITEM_TYPE, 2, 100.00, 20.00));
         $cart->add($this->createLineItem('custom-b', LineItem::CUSTOM_LINE_ITEM_TYPE, 3, 23.45, 3.45));
-        // battery deposit is excluded from everything
+        // battery deposit and promotion are excluded from both qty and price
         $cart->add($this->createLineItem('battery-deposit', 'battery_deposit', 1, 50.00, 0.00));
-        // promotion lowers the price totals but is NOT counted as an item
         $cart->add($this->createLineItem('promo', LineItem::PROMOTION_LINE_ITEM_TYPE, 1, -30.00, -5.60));
         $cart->setPrice(new CartPrice(
             500.00,
@@ -98,9 +97,9 @@ class CartInfoControllerTest extends TestCase
         // 2 (product) + 3 (custom); battery and promotion not counted as items
         $this->assertSame(5, $content['count']);
         $this->assertSame(4, $content['lineItemCount']);
-        // gross: 100.00 + 23.45 - 30.00 (promotion), battery (50.00) excluded
-        $this->assertSame('93.45', $content['totalPrice']);
-        // net: (100.00 - 20.00) + (23.45 - 3.45) + (-30.00 - -5.60) = 75.60
-        $this->assertSame('75.60', $content['netPrice']);
+        // gross: 100.00 + 23.45; battery (50.00) and promotion (-30.00) excluded
+        $this->assertSame('123.45', $content['totalPrice']);
+        // net: (100.00 - 20.00) + (23.45 - 3.45) = 100.00
+        $this->assertSame('100.00', $content['netPrice']);
     }
 }

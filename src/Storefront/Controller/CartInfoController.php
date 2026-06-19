@@ -16,7 +16,10 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route(defaults: ['_routeScope' => ['storefront']])]
 class CartInfoController extends StorefrontController
 {
-    private const BATTERY_DEPOSIT_LINE_ITEM_TYPE = 'battery_deposit';
+    private const EXCLUDED_LINE_ITEM_TYPES = [
+        'battery_deposit',
+        LineItem::PROMOTION_LINE_ITEM_TYPE,
+    ];
 
     #[Route('/cart-info', name: 'frontend.cart_info', defaults: ['XmlHttpRequest' => 'true'], methods: ['GET'])]
     public function cartInfo(Cart $cart, SalesChannelContext $channelContext): Response
@@ -29,15 +32,11 @@ class CartInfoController extends StorefrontController
         $netPrice = 0.0;
 
         foreach ($lineItems as $lineItem) {
-            $type = $lineItem->getType();
-
-            if ($type === self::BATTERY_DEPOSIT_LINE_ITEM_TYPE) {
+            if (in_array($lineItem->getType(), self::EXCLUDED_LINE_ITEM_TYPES, true)) {
                 continue;
             }
 
-            if ($type !== LineItem::PROMOTION_LINE_ITEM_TYPE) {
-                $quantity += $lineItem->getQuantity();
-            }
+            $quantity += $lineItem->getQuantity();
 
             $price = $lineItem->getPrice();
             if ($price === null) {
