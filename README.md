@@ -88,16 +88,16 @@ const data = await res.json();
 
 #### Response fields
 
-| Field           | Type   | Description                                                                                   |
-| --------------- | ------ | --------------------------------------------------------------------------------------------- |
-| `success`       | bool   | Always `true` for a successful response.                                                      |
-| `count`         | int    | Total quantity of all product line items (sum of quantities) — the usual basket-badge number. |
-| `lineItemCount` | int    | Number of distinct line items in the cart.                                                    |
-| `totalPrice`    | string | Cart **gross** total, formatted with 2 decimals and a `.` separator (e.g. `"123.45"`).        |
-| `netPrice`      | string | Cart **net** total, same formatting as `totalPrice`.                                          |
-| `currencyId`    | string | ID of the sales-channel currency the totals are expressed in.                                 |
+| Field           | Type   | Description                                                                                                 |
+| --------------- | ------ | ----------------------------------------------------------------------------------------------------------- |
+| `success`       | bool   | Always `true` for a successful response.                                                                    |
+| `count`         | int    | Total quantity of all product line items (sum of quantities) — the usual basket-badge number.               |
+| `lineItemCount` | int    | Number of distinct line items in the cart.                                                                  |
+| `totalPrice`    | string | **Gross** total of the product line items, formatted with 2 decimals and a `.` separator (e.g. `"123.45"`). |
+| `netPrice`      | string | **Net** total of the product line items, same formatting as `totalPrice`.                                   |
+| `currencyId`    | string | ID of the sales-channel currency the totals are expressed in.                                               |
 
-> **Note:** `count` only sums `product` line items (promotions, discounts, etc. are ignored). For an empty cart all numeric values are `0` / `"0.00"`. When the cart's tax state is _net_, Shopware reports `netPrice` and `totalPrice` as the same value.
+> **Note:** `count`, `totalPrice` and `netPrice` only consider `product` line items. Shipping/delivery costs and other line-item types (e.g. the battery deposit, promotions, discounts) are **excluded** — the totals reflect the value of the products only. For an empty cart all numeric values are `0` / `"0.00"`.
 
 ## Testing
 

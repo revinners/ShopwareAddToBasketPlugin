@@ -8,8 +8,10 @@ use PHPUnit\Framework\TestCase;
 use Revinners\AddToBasketPlugin\Storefront\Controller\CartInfoController;
 use Shopware\Core\Checkout\Cart\Cart;
 use Shopware\Core\Checkout\Cart\LineItem\LineItem;
+use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
 use Shopware\Core\Checkout\Cart\Price\Struct\CartPrice;
 use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedTaxCollection;
+use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTax;
 use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,9 +26,19 @@ class CartInfoControllerTest extends TestCase
         return $channelContext;
     }
 
-    private function createProductLineItem(string $id, int $quantity): LineItem
+    private function createProductLineItem(string $id, int $quantity, float $totalPrice, float $taxAmount): LineItem
     {
         $lineItem = new LineItem($id, LineItem::PRODUCT_LINE_ITEM_TYPE, $id, $quantity);
+        $taxes = new CalculatedTaxCollection([new CalculatedTax($taxAmount, 23.0, $totalPrice)]);
+        $lineItem->setPrice(new CalculatedPrice($totalPrice / $quantity, $totalPrice, $taxes, new TaxRuleCollection(), $quantity));
+
+        return $lineItem;
+    }
+
+    private function createBatteryDepositLineItem(float $totalPrice): LineItem
+    {
+        $lineItem = new LineItem('battery-deposit', 'battery_deposit', 'battery-deposit', 1);
+        $lineItem->setPrice(new CalculatedPrice($totalPrice, $totalPrice, new CalculatedTaxCollection(), new TaxRuleCollection(), 1));
 
         return $lineItem;
     }
@@ -63,12 +75,13 @@ class CartInfoControllerTest extends TestCase
         $controller = new CartInfoController();
 
         $cart = new Cart('test-cart');
-        $cart->add($this->createProductLineItem('product-a', 2));
-        $cart->add($this->createProductLineItem('product-b', 3));
+        $cart->add($this->createProductLineItem('product-a', 2, 100.00, 20.00));
+        $cart->add($this->createProductLineItem('product-b', 3, 23.45, 3.45));
+        $cart->add($this->createBatteryDepositLineItem(50.00));
         $cart->setPrice(new CartPrice(
-            100.36,
-            123.45,
-            123.45,
+            500.00,
+            500.00,
+            500.00,
             new CalculatedTaxCollection(),
             new TaxRuleCollection(),
             CartPrice::TAX_STATE_GROSS
@@ -85,8 +98,8 @@ class CartInfoControllerTest extends TestCase
 
         $this->assertTrue($content['success']);
         $this->assertSame(5, $content['count']);
-        $this->assertSame(2, $content['lineItemCount']);
+        $this->assertSame(3, $content['lineItemCount']);
         $this->assertSame('123.45', $content['totalPrice']);
-        $this->assertSame('100.36', $content['netPrice']);
+        $this->assertSame('100.00', $content['netPrice']);
     }
 }
