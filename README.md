@@ -82,20 +82,29 @@ const data = await res.json();
   "lineItemCount": 2,
   "totalPrice": "123.45",
   "netPrice": "100.36",
-  "currencyId": "b7d2554b0ce847cd82f3ac9bd1c0dfca"
+  "currencyId": "b7d2554b0ce847cd82f3ac9bd1c0dfca",
+  "appliedDiscounts": [
+    {
+      "percentage": 10.0,
+      "isPercentage": true,
+      "hasCode": false,
+      "promotionId": "0192a…"
+    }
+  ]
 }
 ```
 
 #### Response fields
 
-| Field           | Type   | Description                                                                                                  |
-| --------------- | ------ | ------------------------------------------------------------------------------------------------------------ |
-| `success`       | bool   | Always `true` for a successful response.                                                                     |
-| `count`         | int    | Total quantity of the eligible line items (sum of quantities) — the usual basket-badge number.               |
-| `lineItemCount` | int    | Number of distinct line items in the cart (all types).                                                       |
-| `totalPrice`    | string | **Gross** total of the eligible line items, formatted with 2 decimals and a `.` separator (e.g. `"123.45"`). |
-| `netPrice`      | string | **Net** total of the eligible line items, same formatting as `totalPrice`.                                   |
-| `currencyId`    | string | ID of the sales-channel currency the totals are expressed in.                                                |
+| Field              | Type   | Description                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `success`          | bool   | Always `true` for a successful response.                                                                                                                                                                                                                                                                                                                                      |
+| `count`            | int    | Total quantity of the eligible line items (sum of quantities) — the usual basket-badge number.                                                                                                                                                                                                                                                                                |
+| `lineItemCount`    | int    | Number of distinct line items in the cart (all types).                                                                                                                                                                                                                                                                                                                        |
+| `totalPrice`       | string | **Gross** total of the eligible line items, formatted with 2 decimals and a `.` separator (e.g. `"123.45"`).                                                                                                                                                                                                                                                                  |
+| `netPrice`         | string | **Net** total of the eligible line items, same formatting as `totalPrice`.                                                                                                                                                                                                                                                                                                    |
+| `currencyId`       | string | ID of the sales-channel currency the totals are expressed in.                                                                                                                                                                                                                                                                                                                 |
+| `appliedDiscounts` | array  | One entry per applied promotion (after Shopware's exclusions). Each: `percentage` (declared % for percentage discounts, otherwise effective share of the item value), `isPercentage` (bool), `hasCode` (bool — `true` for redeemed coupon codes, `false` for automatic promotions), `promotionId` (string\|null). Lets the storefront tell which discount is actually active. |
 
 > **Note:** the totals sum **all** line items regardless of type (a cart may hold several product-like types), **except** the battery deposit (`battery_deposit`) and promotions (`promotion`), which are left out of `count`, `totalPrice` and `netPrice`. The thresholds are meant to be compared against the value of the items themselves, so an applied discount must not lower it. Shipping/delivery costs are excluded implicitly because they are not line items. For an empty cart all numeric values are `0` / `"0.00"`.
 
