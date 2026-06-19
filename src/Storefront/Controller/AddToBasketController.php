@@ -59,7 +59,7 @@ class AddToBasketController extends StorefrontController
 
         $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
 
-        $lineItem = $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $product->getId() && $item->getType() === 'product');
+        $lineItem = $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $product->getId() && in_array($item->getType(), ['product', 'revinners_bundle'], true));
 
         if (!$lineItem) {
             return new JsonResponse([
@@ -124,7 +124,7 @@ class AddToBasketController extends StorefrontController
 
             $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
 
-            $lineItem = $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $product->getId() && $item->getType() === 'product');
+            $lineItem = $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $product->getId() && in_array($item->getType(), ['product', 'revinners_bundle'], true));
 
             if (!$lineItem) {
                 return new JsonResponse([

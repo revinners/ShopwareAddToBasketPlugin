@@ -41,7 +41,7 @@ class CartManager
         $existingLineItem = null;
         foreach ($cart->getLineItems() as $lineItem) {
             if ($lineItem->getReferencedId() === $product->getId() &&
-                $lineItem->getType() === LineItem::PRODUCT_LINE_ITEM_TYPE &&
+                in_array($lineItem->getType(), [LineItem::PRODUCT_LINE_ITEM_TYPE, 'revinners_bundle'], true) &&
                 !$lineItem->hasPayloadValue('netiNextEasyCoupon')) {
                 $existingLineItem = $lineItem;
                 break;
