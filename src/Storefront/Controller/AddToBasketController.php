@@ -35,7 +35,9 @@ class AddToBasketController extends StorefrontController
         $dto = new AddToBasketRequest(
             $request->query->get('sku'),
             $qty,
-            (float)$request->query->get('amount', 0.0),
+            // A decimal comma survives the trip from a text input; (float)'51,50' would
+            // silently truncate to 51, so normalise before the cast.
+            (float)str_replace(',', '.', (string)$request->query->get('amount', '0')),
             $request->get('message', ''),
             $request->query->get('originalSku')
         );
