@@ -19,6 +19,10 @@ class CartInfoController extends StorefrontController
     private const EXCLUDED_LINE_ITEM_TYPES = [
         'battery_deposit',
         LineItem::PROMOTION_LINE_ITEM_TYPE,
+        // A redeemed RevinnersVoucher gift card adds a negative discount position. It is a
+        // payment, not merchandise: it must neither lower the totals the promotion threshold
+        // UI reads nor count as an item in the cart badge.
+        'rev-voucher-discount',
     ];
 
     #[Route('/cart-info', name: 'frontend.cart_info', defaults: ['XmlHttpRequest' => 'true'], methods: ['GET'])]
@@ -46,6 +50,16 @@ class CartInfoController extends StorefrontController
             }
 
             $quantity += $lineItem->getQuantity();
+
+            // A gift card being bought is money, not merchandise. Its face value must not
+            // count toward promotion thresholds ("bonus koszykowy") — Shopware already keeps
+            // cart promotions off the card itself (it is non-stackable), and this endpoint's
+            // price fields feed only the threshold progress UI, which was still congratulating
+            // customers on a discount their voucher-only cart never got. It stays in the
+            // quantity above: the cart badge counts items, and the card is one.
+            if ($type === LineItem::PRODUCT_LINE_ITEM_TYPE && \is_array($lineItem->getPayloadValue('revVoucher'))) {
+                continue;
+            }
 
             $price = $lineItem->getPrice();
             if ($price === null) {

@@ -21,7 +21,11 @@ final class AddToBasketRequest
     #[Assert\Assert\PositiveOrZero(message: 'Quantity must be a positive integer')]
     private float $amount;
 
-    #[Assert\Length(max: 255, maxMessage: 'Message cannot exceed 255 characters')]
+    // Transport cap only, matching what GiftCardPayloadSubscriber (RevinnersVoucher) accepts.
+    // The customer-visible limit (250 characters, printed-card budget) is enforced by the
+    // voucher's own cart validator, which produces an actionable cart error — a rejection
+    // here surfaces nowhere in the storefront, so the cart validator must get its chance.
+    #[Assert\Length(max: 1000, maxMessage: 'Message cannot exceed 1000 characters')]
     private ?string $message;
 
     public function __construct(string $sku, int $quantity, float $amount = 0.0, ?string $message = null, ?string $originalSku = null)
