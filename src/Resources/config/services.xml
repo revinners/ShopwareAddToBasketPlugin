@@ -15,6 +15,7 @@
             <argument type="service" id="Revinners\AddToBasketPlugin\Service\AddToBasketRequestValidator"/>
             <argument type="service" id="Revinners\AddToBasketPlugin\Service\ProductFinder"/>
             <argument type="service" id="Revinners\AddToBasketPlugin\Service\CartManager"/>
+            <argument type="service" id="logger"/>
         </service>
 
         <service id="Revinners\AddToBasketPlugin\Storefront\Controller\CartInfoController" public="true">

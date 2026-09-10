@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Revinners\AddToBasketPlugin\Storefront\Controller;
 
+use Psr\Log\LoggerInterface;
 use Revinners\AddToBasketPlugin\DTO\AddToBasketRequest;
 use Revinners\AddToBasketPlugin\Service\AddToBasketRequestValidator;
 use Revinners\AddToBasketPlugin\Service\CartManager;
@@ -24,6 +25,7 @@ class AddToBasketController extends StorefrontController
         private readonly AddToBasketRequestValidator $validator,
         private readonly ProductFinder               $productFinder,
         private readonly CartManager                 $cartManager,
+        private readonly LoggerInterface             $logger,
     )
     {
     }
@@ -64,10 +66,7 @@ class AddToBasketController extends StorefrontController
         $lineItem = $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $product->getId() && in_array($item->getType(), ['product', 'revinners_bundle'], true));
 
         if (!$lineItem) {
-            return new JsonResponse([
-                'success' => false,
-                'message' => 'Could not retrieve line item from cart',
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return $this->lineItemMissingResponse($cart, $dto);
         }
 
         $price = $lineItem->getPrice();
@@ -129,10 +128,7 @@ class AddToBasketController extends StorefrontController
             $lineItem = $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $product->getId() && in_array($item->getType(), ['product', 'revinners_bundle'], true));
 
             if (!$lineItem) {
-                return new JsonResponse([
-                    'success' => false,
-                    'message' => 'Could not retrieve line item from cart',
-                ], Response::HTTP_INTERNAL_SERVER_ERROR);
+                return $this->lineItemMissingResponse($cart, $dto);
             }
 
             $price = $lineItem->getPrice();
@@ -155,5 +151,35 @@ class AddToBasketController extends StorefrontController
         return new JsonResponse([
             'results' => $results,
         ]);
+    }
+
+    /**
+     * The product exists but the cart processors threw the line item back out
+     * (inactive product, not visible in this sales channel, closeout with no
+     * stock, ...). Shopware records the reason as a cart error, so surface it in
+     * the log and in the response instead of a bare "could not retrieve".
+     */
+    private function lineItemMissingResponse(Cart $cart, AddToBasketRequest $dto): JsonResponse
+    {
+        $cartErrors = [];
+        foreach ($cart->getErrors() as $error) {
+            $cartErrors[] = [
+                'key' => $error->getMessageKey(),
+                'message' => $error->getMessage(),
+            ];
+        }
+
+        $this->logger->error('Add to basket: could not retrieve line item from cart after adding it', [
+            'sku' => $dto->getSku(),
+            'originalSku' => $dto->getOriginalSku(),
+            'qty' => $dto->getQuantity(),
+            'cartErrors' => $cartErrors,
+        ]);
+
+        return new JsonResponse([
+            'success' => false,
+            'message' => 'Could not retrieve line item from cart',
+            'errors' => $cartErrors,
+        ], Response::HTTP_INTERNAL_SERVER_ERROR);
     }
 }

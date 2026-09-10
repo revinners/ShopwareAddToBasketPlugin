@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Revinners\AddToBasketPlugin\Tests\Storefront\Controller;
 
 use PHPUnit\Framework\TestCase;
-use Revinners\AddToBasketPlugin\DTO\AddToBasketRequest;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Revinners\AddToBasketPlugin\Service\AddToBasketRequestValidator;
 use Revinners\AddToBasketPlugin\Service\CartManager;
 use Revinners\AddToBasketPlugin\Service\ProductFinder;
 use Revinners\AddToBasketPlugin\Storefront\Controller\AddToBasketController;
 use Shopware\Core\Checkout\Cart\Cart;
+use Shopware\Core\Content\Product\Cart\ProductNotFoundError;
 use Shopware\Core\Content\Product\ProductEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
@@ -45,9 +47,10 @@ class AddToBasketControllerTest extends TestCase
     private function createController(
         AddToBasketRequestValidator $validator,
         ProductFinder $productFinder,
-        CartManager $cartManager
+        CartManager $cartManager,
+        ?LoggerInterface $logger = null,
     ): AddToBasketController {
-        return new AddToBasketController($validator, $productFinder, $cartManager);
+        return new AddToBasketController($validator, $productFinder, $cartManager, $logger ?? new NullLogger());
     }
 
     private function createRequest(array $queryParams): Request
@@ -141,5 +144,51 @@ class AddToBasketControllerTest extends TestCase
 
         $this->assertTrue($content['success']);
         $this->assertEquals('Product added to the basket', $content['message']);
+    }
+
+    public function testAddToBasketLogsCartErrorsWhenCartDropsTheLineItem(): void
+    {
+        $validator = $this->createValidatorMock();
+        $product = $this->createProductEntity('product-id');
+        $productFinder = $this->createProductFinderMock($product);
+
+        // The cart processors (e.g. an inactive product) rejected the line item:
+        // nothing lands in the cart, only a cart error explaining why.
+        $cartManager = $this->createCartManagerMock();
+        $cartManager->method('addToCart')
+            ->willReturnCallback(static function (Cart $cart): void {
+                $cart->addErrors(new ProductNotFoundError('product-id'));
+            });
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('error')
+            ->with(
+                $this->stringContains('Could not retrieve line item from cart'),
+                $this->callback(static function (array $context): bool {
+                    return $context['sku'] === '9079EY000100' &&
+                        $context['originalSku'] === '908908586300' &&
+                        $context['qty'] === 1 &&
+                        $context['cartErrors'][0]['key'] === 'product-not-found';
+                }),
+            );
+
+        $controller = $this->createController($validator, $productFinder, $cartManager, $logger);
+
+        $request = $this->createRequest(['sku' => '9079EY000100', 'qty' => '1', 'originalSku' => '908908586300']);
+        $cart = new Cart('test-cart');
+        $context = $this->createMock(Context::class);
+        $channelContext = $this->createMock(SalesChannelContext::class);
+
+        $response = $controller->addToBasket($request, $cart, $context, $channelContext);
+
+        $this->assertEquals(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
+
+        $content = $this->decodeJsonResponse($response);
+
+        $this->assertFalse($content['success']);
+        $this->assertEquals('Could not retrieve line item from cart', $content['message']);
+        $this->assertEquals('product-not-found', $content['errors'][0]['key']);
+        $this->assertNotEmpty($content['errors'][0]['message']);
     }
 }
