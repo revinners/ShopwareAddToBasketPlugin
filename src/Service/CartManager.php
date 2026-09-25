@@ -70,7 +70,17 @@ class CartManager
                 $lineItem->setPayloadValue('originalSku', $originalSku);
             }
 
-            $this->cartService->add($cart, $lineItem, $channelContext);
+            $calculated = $this->cartService->add($cart, $lineItem, $channelContext);
+
+            if ($this->hasRejectedGiftCardAmount($calculated, $lineItem->getId())) {
+                // Left in place, the card would sit in the cart at 0.00 behind a blocking error, and
+                // the storefront would still open its "added to cart" modal for it. Taking it back out
+                // and failing the request lets the product page say what is wrong, next to the field.
+                $this->cartService->remove($calculated, $lineItem->getId(), $channelContext);
+
+                throw new GiftCardAmountRejectedException($dto->getSku());
+            }
+
             $items[] = $lineItem;
         }
 
@@ -137,6 +147,25 @@ class CartManager
                 $messageKey => $message,
             ]);
         }
+    }
+
+    /**
+     * Cart error RevinnersVoucher raises for a card whose amount is missing or outside what the
+     * product allows. The voucher plugin owns the range and selection rules, so its verdict is read
+     * here rather than re-implementing them.
+     */
+    private const GIFT_CARD_VALUE_ERROR_KEY = 'rev-voucher-value-invalid';
+
+    private function hasRejectedGiftCardAmount(Cart $cart, string $lineItemId): bool
+    {
+        foreach ($cart->getErrors() as $error) {
+            if ($error->getMessageKey() === self::GIFT_CARD_VALUE_ERROR_KEY
+                && ($error->getParameters()['lineItemId'] ?? null) === $lineItemId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isPluginActive(string $pluginName): bool

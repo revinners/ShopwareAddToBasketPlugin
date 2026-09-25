@@ -6,6 +6,8 @@ namespace Revinners\AddToBasketPlugin\Tests\Service;
 
 use PHPUnit\Framework\TestCase;
 use Revinners\AddToBasketPlugin\Service\CartManager;
+use Shopware\Core\Checkout\Cart\Cart;
+use Shopware\Core\Checkout\Cart\Error\Error;
 use Shopware\Core\Checkout\Cart\LineItem\LineItem;
 
 /**
@@ -86,5 +88,68 @@ class CartManagerGiftCardTest extends TestCase
         self::assertSame(50.0, $payload['voucherValue']);
         self::assertArrayHasKey('deliveryMessage', $payload);
         self::assertNull($payload['deliveryMessage']);
+    }
+
+    public function testACardTheVoucherPluginRejectedIsDetected(): void
+    {
+        $cart = new Cart('token');
+        $cart->addErrors(self::cartError('rev-voucher-value-invalid', 'rev-voucher-abc'));
+
+        self::assertTrue($this->invoke('hasRejectedGiftCardAmount', [$cart, 'rev-voucher-abc']));
+    }
+
+    public function testARejectionOfAnotherCardDoesNotBlockThisOne(): void
+    {
+        // A card already sitting in the cart with a bad amount must not make a correct new one fail.
+        $cart = new Cart('token');
+        $cart->addErrors(self::cartError('rev-voucher-value-invalid', 'rev-voucher-older'));
+
+        self::assertFalse($this->invoke('hasRejectedGiftCardAmount', [$cart, 'rev-voucher-new']));
+    }
+
+    public function testOtherCartErrorsAreNotTreatedAsARejectedAmount(): void
+    {
+        $cart = new Cart('token');
+        $cart->addErrors(self::cartError('rev-voucher-gift-options-invalid', 'rev-voucher-abc'));
+
+        self::assertFalse($this->invoke('hasRejectedGiftCardAmount', [$cart, 'rev-voucher-abc']));
+    }
+
+    /**
+     * Shaped like RevinnersVoucher's GiftCardValueError, which this plugin cannot depend on.
+     */
+    private static function cartError(string $key, string $lineItemId): Error
+    {
+        return new class($key, $lineItemId) extends Error {
+            public function __construct(private readonly string $key, private readonly string $lineItemId)
+            {
+                parent::__construct('test');
+            }
+
+            public function getId(): string
+            {
+                return $this->key . '-' . $this->lineItemId;
+            }
+
+            public function getMessageKey(): string
+            {
+                return $this->key;
+            }
+
+            public function getLevel(): int
+            {
+                return self::LEVEL_ERROR;
+            }
+
+            public function blockOrder(): bool
+            {
+                return true;
+            }
+
+            public function getParameters(): array
+            {
+                return ['lineItemId' => $this->lineItemId];
+            }
+        };
     }
 }

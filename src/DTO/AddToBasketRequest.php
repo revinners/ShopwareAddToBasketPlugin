@@ -22,7 +22,7 @@ final class AddToBasketRequest
     private float $amount;
 
     // Transport cap only, matching what GiftCardPayloadSubscriber (RevinnersVoucher) accepts.
-    // The customer-visible limit (250 characters, printed-card budget) is enforced by the
+    // The customer-visible limit (85 characters, printed-card budget) is enforced by the
     // voucher's own cart validator, which produces an actionable cart error — a rejection
     // here surfaces nowhere in the storefront, so the cart validator must get its chance.
     #[Assert\Length(max: 1000, maxMessage: 'Message cannot exceed 1000 characters')]

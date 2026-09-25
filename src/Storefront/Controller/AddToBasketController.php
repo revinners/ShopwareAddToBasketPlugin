@@ -8,6 +8,7 @@ use Psr\Log\LoggerInterface;
 use Revinners\AddToBasketPlugin\DTO\AddToBasketRequest;
 use Revinners\AddToBasketPlugin\Service\AddToBasketRequestValidator;
 use Revinners\AddToBasketPlugin\Service\CartManager;
+use Revinners\AddToBasketPlugin\Service\GiftCardAmountRejectedException;
 use Revinners\AddToBasketPlugin\Service\ProductFinder;
 use Shopware\Core\Checkout\Cart\Cart;
 use Shopware\Core\Framework\Context;
@@ -61,7 +62,11 @@ class AddToBasketController extends StorefrontController
             ], Response::HTTP_NOT_FOUND);
         }
 
-        $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
+        try {
+            $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
+        } catch (GiftCardAmountRejectedException) {
+            return $this->giftCardRejectedResponse();
+        }
 
         $lineItem = $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $product->getId() && in_array($item->getType(), ['product', 'revinners_bundle'], true));
 
@@ -123,7 +128,11 @@ class AddToBasketController extends StorefrontController
                 ], Response::HTTP_NOT_FOUND);
             }
 
-            $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
+            try {
+                $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
+            } catch (GiftCardAmountRejectedException) {
+                return $this->giftCardRejectedResponse();
+            }
 
             $lineItem = $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $product->getId() && in_array($item->getType(), ['product', 'revinners_bundle'], true));
 
@@ -151,6 +160,20 @@ class AddToBasketController extends StorefrontController
         return new JsonResponse([
             'results' => $results,
         ]);
+    }
+
+    /**
+     * A gift card with no amount, or one outside the product's range, is not added at all. The
+     * storefront keys on `errorCode` to show the message next to the amount field instead of the
+     * "added to cart" modal.
+     */
+    private function giftCardRejectedResponse(): JsonResponse
+    {
+        return new JsonResponse([
+            'success' => false,
+            'errorCode' => 'giftCardAmountInvalid',
+            'message' => $this->trans('revinnersAddToBasket.giftCardAmountInvalid'),
+        ], Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
     /**
