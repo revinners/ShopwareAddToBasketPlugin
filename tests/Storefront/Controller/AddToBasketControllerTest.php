@@ -12,6 +12,12 @@ use Revinners\AddToBasketPlugin\Service\CartManager;
 use Revinners\AddToBasketPlugin\Service\ProductFinder;
 use Revinners\AddToBasketPlugin\Storefront\Controller\AddToBasketController;
 use Shopware\Core\Checkout\Cart\Cart;
+use Shopware\Core\Checkout\Cart\LineItem\LineItem;
+use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
+use Shopware\Core\Checkout\Cart\Price\Struct\CartPrice;
+use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTax;
+use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
+use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
 use Shopware\Core\Content\Product\Cart\ProductNotFoundError;
 use Shopware\Core\Content\Product\ProductEntity;
 use Shopware\Core\Framework\Context;
@@ -126,14 +132,15 @@ class AddToBasketControllerTest extends TestCase
 
         $cartManager = $this->createCartManagerMock();
         $cartManager->expects($this->once())
-            ->method('addToCart');
+            ->method('addToCart')
+            ->willReturnCallback(fn (Cart $cart) => $this->putInCart($cart, 'line-1', 'product-id', 123.0, 23.0, 2));
 
         $controller = $this->createController($validator, $productFinder, $cartManager);
 
         $request = $this->createRequest(['sku' => 'existing-sku', 'qty' => '2']);
         $cart = new Cart('test-cart');
         $context = $this->createMock(Context::class);
-        $channelContext = $this->createMock(SalesChannelContext::class);
+        $channelContext = $this->createChannelContext(CartPrice::TAX_STATE_GROSS);
 
         $response = $controller->addToBasket($request, $cart, $context, $channelContext);
 
@@ -144,6 +151,90 @@ class AddToBasketControllerTest extends TestCase
 
         $this->assertTrue($content['success']);
         $this->assertEquals('Product added to the basket', $content['message']);
+        $this->assertSame('246.00', $content['price']);
+    }
+
+    public function testThePriceInAGrossContextIsTheUnitPriceWithoutTaxAddedAgain(): void
+    {
+        // A 1000 zł gift card at 23 % VAT used to answer 1230.00: the gross unit price was
+        // multiplied by the tax rate once more.
+        $content = $this->addWithCart(CartPrice::TAX_STATE_GROSS, 1, function (Cart $cart): LineItem {
+            return $this->putInCart($cart, 'rev-voucher-a', 'product-id', 1000.0, 23.0, 1);
+        });
+
+        $this->assertSame('1000.00', $content['price']);
+    }
+
+    public function testThePriceInANetContextAddsTheTaxToTheNetUnitPrice(): void
+    {
+        // B2B: the calculated unit price is net, 100 + 23 % = 123.00 per piece.
+        $content = $this->addWithCart(CartPrice::TAX_STATE_NET, 2, function (Cart $cart): LineItem {
+            return $this->putInCart($cart, 'line-1', 'product-id', 100.0, 23.0, 2, true);
+        });
+
+        $this->assertSame('246.00', $content['price']);
+    }
+
+    public function testASecondGiftCardReportsItsOwnPriceNotTheFirstOnes(): void
+    {
+        $content = $this->addWithCart(CartPrice::TAX_STATE_GROSS, 1, function (Cart $cart): LineItem {
+            $this->putInCart($cart, 'rev-voucher-first', 'product-id', 1000.0, 23.0, 1);
+
+            return $this->putInCart($cart, 'rev-voucher-second', 'product-id', 250.0, 23.0, 1);
+        });
+
+        $this->assertSame('250.00', $content['price']);
+    }
+
+    private function addWithCart(string $taxState, int $qty, callable $fill): array
+    {
+        $product = $this->createProductEntity('product-id');
+        $cartManager = $this->createCartManagerMock();
+        $cartManager->method('addToCart')->willReturnCallback(static fn (Cart $cart) => $fill($cart));
+
+        $controller = $this->createController($this->createValidatorMock(), $this->createProductFinderMock($product), $cartManager);
+
+        $response = $controller->addToBasket(
+            $this->createRequest(['sku' => 'SW10020', 'qty' => (string) $qty]),
+            new Cart('test-cart'),
+            $this->createMock(Context::class),
+            $this->createChannelContext($taxState),
+        );
+
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        return $this->decodeJsonResponse($response);
+    }
+
+    private function createChannelContext(string $taxState): SalesChannelContext
+    {
+        $channelContext = $this->createMock(SalesChannelContext::class);
+        $channelContext->method('getTaxState')->willReturn($taxState);
+
+        return $channelContext;
+    }
+
+    /**
+     * A priced line as the cart calculator leaves it: in a gross context the unit price already
+     * contains the tax, in a net one the tax sits beside it.
+     */
+    private function putInCart(Cart $cart, string $id, string $productId, float $unitPrice, float $taxRate, int $quantity, bool $net = false): LineItem
+    {
+        $total = $unitPrice * $quantity;
+        $tax = $net ? $total * $taxRate / 100 : $total - $total / (1 + $taxRate / 100);
+
+        $lineItem = new LineItem($id, LineItem::PRODUCT_LINE_ITEM_TYPE, $productId, $quantity);
+        $lineItem->setStackable(true);
+        $lineItem->setPrice(new CalculatedPrice(
+            $unitPrice,
+            $total,
+            new CalculatedTaxCollection([new CalculatedTax($tax, $taxRate, $total)]),
+            new TaxRuleCollection(),
+            $quantity,
+        ));
+        $cart->add($lineItem);
+
+        return $lineItem;
     }
 
     public function testAddToBasketLogsCartErrorsWhenCartDropsTheLineItem(): void

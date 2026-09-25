@@ -11,6 +11,8 @@ use Revinners\AddToBasketPlugin\Service\CartManager;
 use Revinners\AddToBasketPlugin\Service\GiftCardAmountRejectedException;
 use Revinners\AddToBasketPlugin\Service\ProductFinder;
 use Shopware\Core\Checkout\Cart\Cart;
+use Shopware\Core\Checkout\Cart\LineItem\LineItem;
+use Shopware\Core\Checkout\Cart\Price\Struct\CartPrice;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
@@ -63,24 +65,18 @@ class AddToBasketController extends StorefrontController
         }
 
         try {
-            $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
+            $added = $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
         } catch (GiftCardAmountRejectedException) {
             return $this->giftCardRejectedResponse();
         }
 
-        $lineItem = $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $product->getId() && in_array($item->getType(), ['product', 'revinners_bundle'], true));
+        $lineItem = $this->findAddedLineItem($cart, $added, $product->getId());
 
         if (!$lineItem) {
             return $this->lineItemMissingResponse($cart, $dto);
         }
 
-        $price = $lineItem->getPrice();
-        $tax = $price->getCalculatedTaxes()->first();
-        $taxRate = 1;
-        if (isset($tax)) {
-            $taxRate = 1 + $tax->getTaxRate() / 100;
-        }
-        $finalPrice = number_format($price->getUnitPrice() * $taxRate * $qty, 2, '.', '');
+        $finalPrice = $this->grossPrice($lineItem, $qty, $channelContext);
 
         return new JsonResponse([
             'price' => $finalPrice,
@@ -129,24 +125,18 @@ class AddToBasketController extends StorefrontController
             }
 
             try {
-                $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
+                $added = $this->cartManager->addToCart($cart, $product, $dto, $channelContext);
             } catch (GiftCardAmountRejectedException) {
                 return $this->giftCardRejectedResponse();
             }
 
-            $lineItem = $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $product->getId() && in_array($item->getType(), ['product', 'revinners_bundle'], true));
+            $lineItem = $this->findAddedLineItem($cart, $added, $product->getId());
 
             if (!$lineItem) {
                 return $this->lineItemMissingResponse($cart, $dto);
             }
 
-            $price = $lineItem->getPrice();
-            $tax = $price->getCalculatedTaxes()->first();
-            $taxRate = 1;
-            if (isset($tax)) {
-                $taxRate = 1 + $tax->getTaxRate() / 100;
-            }
-            $finalPrice = number_format($price->getUnitPrice() * $taxRate * $qty, 2, '.', '');
+            $finalPrice = $this->grossPrice($lineItem, $qty, $channelContext);
 
             $results[] = [
                 'sku' => $dto->getSku(),
@@ -160,6 +150,46 @@ class AddToBasketController extends StorefrontController
         return new JsonResponse([
             'results' => $results,
         ]);
+    }
+
+    /**
+     * The position this request added. CartManager hands it back; the lookup by product id is only
+     * a fallback, because it picks the first of several gift cards rather than the new one.
+     */
+    private function findAddedLineItem(Cart $cart, ?LineItem $added, string $productId): ?LineItem
+    {
+        if ($added !== null) {
+            // Read back from the cart: a processor may have thrown the position out again.
+            return $cart->getLineItems()->get($added->getId());
+        }
+
+        return $cart->getLineItems()->firstWhere(fn($item) => $item->getReferencedId() === $productId && in_array($item->getType(), ['product', 'revinners_bundle'], true));
+    }
+
+    /**
+     * Gross price of the quantity just added.
+     *
+     * The unit price is gross in a gross (B2C) context and net in a net (B2B) one. The tax rate
+     * used to be multiplied on top in both, so every B2C response came out one VAT rate too high
+     * (a 1000 zł gift card answered 1230.00). Only a net context needs the tax added, and it is
+     * taken from the calculated taxes so a line with several tax rules is still right. A tax-free
+     * context has no tax to add.
+     */
+    private function grossPrice(LineItem $lineItem, int $qty, SalesChannelContext $channelContext): string
+    {
+        $price = $lineItem->getPrice();
+
+        if ($price === null) {
+            return number_format(0, 2, '.', '');
+        }
+
+        $unitPrice = $price->getUnitPrice();
+
+        if ($channelContext->getTaxState() === CartPrice::TAX_STATE_NET) {
+            $unitPrice += $price->getCalculatedTaxes()->getAmount() / max(1, $price->getQuantity());
+        }
+
+        return number_format($unitPrice * $qty, 2, '.', '');
     }
 
     /**

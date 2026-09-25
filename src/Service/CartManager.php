@@ -33,7 +33,11 @@ class CartManager
         $this->session = $sessionFactory->createSession();
     }
 
-    public function addToCart(Cart $cart, ProductEntity $product, AddToBasketRequest $dto, SalesChannelContext $channelContext): void
+    /**
+     * @return LineItem the position this request added to or created. Looking it up by product id
+     *                  afterwards picks the wrong one as soon as the cart holds two gift cards.
+     */
+    public function addToCart(Cart $cart, ProductEntity $product, AddToBasketRequest $dto, SalesChannelContext $channelContext): ?LineItem
     {
         $quantity = $dto->getQuantity();
         $amount = $dto->getAmount();
@@ -97,6 +101,8 @@ class CartManager
         //Wymagane do poprawnego działania event subscriberów, które nasłuchują na dodanie produktu do koszyka
         $this->eventDispatcher->dispatch(new AfterLineItemAddedEvent($items, $cart, $channelContext));
         $this->eventDispatcher->dispatch(new CartChangedEvent($cart, $channelContext));
+
+        return $items[0] ?? null;
     }
 
     /**
